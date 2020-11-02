@@ -892,6 +892,7 @@ class SieveQueue(IOQController):
         IOQController.__init__(self, str(address))
 
         # save a reference to the request function
+        print("dap: SieveQueue: %r"%request_fn)
         self.request_fn = request_fn
         self.address = address
 
@@ -902,6 +903,7 @@ class SieveQueue(IOQController):
         self.active_io(iocb)
 
         # send the request
+        print("dap: SieveQueue.process_io %r"%iocb.args[0])
         self.request_fn(iocb.args[0])
 
 #

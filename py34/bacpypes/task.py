@@ -58,6 +58,10 @@ class _Task(DebugContents, Logging):
     def install_task(self, when=None, delta=None):
         global _task_manager, _unscheduled_tasks
 
+        print("dap: install_task")
+        import sys
+        sys.stdout.write('dap: install_task  ')
+
         # check for delta from now
         if (when is None) and (delta is not None):
             if not _task_manager:
@@ -92,6 +96,8 @@ class _Task(DebugContents, Logging):
 
     def resume_task(self):
         global _task_manager
+
+        print("dap: resume_task")
 
         _task_manager.resume_task(self)
 

@@ -94,6 +94,8 @@ class Subscription(OneShotTask, DebugContents):
         if _debug: Subscription._debug("__init__ %r %r %r %r %r %r", obj_ref, client_addr, proc_id, obj_id, confirmed, lifetime)
         OneShotTask.__init__(self)
 
+        print("dap: initialization of Subscription")
+
         # save the reference to the related object
         self.obj_ref = obj_ref
 
@@ -103,6 +105,8 @@ class Subscription(OneShotTask, DebugContents):
         self.obj_id = obj_id
         self.confirmed = confirmed
         self.lifetime = lifetime
+
+        print("dap: lifetime is: "%self.lifetime)
 
         # if lifetime is non-zero, schedule the subscription to expire
         if lifetime != 0:
@@ -133,6 +137,8 @@ class Subscription(OneShotTask, DebugContents):
 
     def process_task(self):
         if _debug: Subscription._debug("process_task")
+
+        print("dap: process_task: subscription will be canceled.")
 
         # subscription is canceled
         self.cancel_subscription()

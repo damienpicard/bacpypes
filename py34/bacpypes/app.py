@@ -414,6 +414,8 @@ class ApplicationIOController(IOController, Application):
         IOController.__init__(self)
         Application.__init__(self, *args, **kwargs)
 
+        print("dap: ApplicationIOController")
+
         # queues for each address
         self.queue_by_address = {}
 
@@ -430,6 +432,8 @@ class ApplicationIOController(IOController, Application):
             queue = SieveQueue(self._app_request, destination_address)
             self.queue_by_address[destination_address] = queue
         if _debug: ApplicationIOController._debug("    - queue: %r", queue)
+
+        print("dap: process_io")
 
         # ask the queue to process the request
         queue.request_io(iocb)
@@ -481,12 +485,13 @@ class ApplicationIOController(IOController, Application):
         if not isinstance(apdu, UnconfirmedRequestPDU):
             raise RuntimeError("use IOCB for confirmed requests")
 
+        print("dap: request")
         # send it downstream
         super(ApplicationIOController, self).request(apdu)
 
     def confirmation(self, apdu):
         if _debug: ApplicationIOController._debug("confirmation %r", apdu)
-
+        print("dap: confirmation")
         # this is an ack, error, reject or abort
         self._app_complete(apdu.pduSource, apdu)
 

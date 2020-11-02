@@ -9,11 +9,12 @@ APDU to the context to print out.
 Making multiple subscription contexts and keeping them active based on their
 lifetime is left as an exercise for the reader.
 """
-
+import time
+from datetime import datetime
 from bacpypes.debugging import bacpypes_debugging, ModuleLogger
 from bacpypes.consolelogging import ConfigArgumentParser
 
-from bacpypes.core import run, deferred
+from bacpypes.core import run, deferred, stop
 from bacpypes.iocb import IOCB
 
 from bacpypes.pdu import Address
@@ -22,6 +23,8 @@ from bacpypes.errors import ExecutionError
 
 from bacpypes.app import BIPSimpleApplication
 from bacpypes.local.device import LocalDeviceObject
+
+from bacpypes.task import OneShotTask
 
 # some debugging
 _debug = 0
@@ -36,6 +39,21 @@ next_proc_id = 1
 #
 #   SubscriptionContext
 #
+
+class RenewSubscription(OneShotTask):
+    def __init__(self, subscribeCOVApplication, context):
+        self.subscribeCOVApplication = subscribeCOVApplication
+        self.context = context
+        OneShotTask.__init__(self, when=None)
+
+    def process_task(self):
+        print("dap: subscription has arrived at end of lifetime: %s"%datetime.now())
+        print("Making a new subscription")
+
+        self.subscribeCOVApplication.close_socket()
+        stop()
+        #self.subscribeCOVApplication.send_subscription(self.context)
+
 
 @bacpypes_debugging
 class SubscriptionContext:
@@ -102,21 +120,26 @@ class SubscribeCOVApplication(BIPSimpleApplication):
         if _debug: SubscribeCOVApplication._debug("    - iocb: %r", iocb)
 
         # callback when it is acknowledged
-        iocb.add_callback(self.subscription_acknowledged)
+        iocb.add_callback(self.subscription_acknowledged, context)
 
         # give it to the application
         this_application.request_io(iocb)
 
-    def subscription_acknowledged(self, iocb):
+    def subscription_acknowledged(self, iocb, context):
         if _debug: SubscribeCOVApplication._debug("subscription_acknowledged %r", iocb)
+        print("dap: subscription_acknowledged at time %s"%datetime.now())
 
         # do something for success
         if iocb.ioResponse:
             if _debug: SubscribeCOVApplication._debug("    - response: %r", iocb.ioResponse)
+            print("dap: subscription_acknowledged")
 
         # do something for error/reject/abort
         if iocb.ioError:
             if _debug: SubscribeCOVApplication._debug("    - error: %r", iocb.ioError)
+
+        rs = RenewSubscription(self, context)
+        rs.install_task(delta=iocb.args[0].lifetime)
 
     def do_ConfirmedCOVNotificationRequest(self, apdu):
         if _debug: SubscribeCOVApplication._debug("do_ConfirmedCOVNotificationRequest %r", apdu)
@@ -141,6 +164,7 @@ class SubscribeCOVApplication(BIPSimpleApplication):
 
     def do_UnconfirmedCOVNotificationRequest(self, apdu):
         if _debug: SubscribeCOVApplication._debug("do_UnconfirmedCOVNotificationRequest %r", apdu)
+        print("dap: do_UnconfirmedCOVNotificationRequest")
 
         # look up the process identifier
         context = subscription_contexts.get(apdu.subscriberProcessIdentifier, None)
@@ -151,7 +175,7 @@ class SubscribeCOVApplication(BIPSimpleApplication):
         # now tell the context object
         context.cov_notification(apdu)
 
-#
+#do_UnconfirmedCOVNotificationRequest
 #   __main__
 #
 
@@ -159,23 +183,33 @@ def main():
     global this_application
 
     # parse the command line arguments
-    args = ConfigArgumentParser(description=__doc__).parse_args()
+    #args = ConfigArgumentParser(description=__doc__).parse_args()
 
     if _debug: _log.debug("initialization")
     if _debug: _log.debug("    - args: %r", args)
 
     # make a device object
-    this_device = LocalDeviceObject(ini=args.ini)
+    this_device = LocalDeviceObject(
+        objectName="Dap"
+        , objectIdentifier=111
+        , maxApduLengthAccepted=1024
+        , segmentationSupported="segmentedBoth"
+        , vendorIdentifier=15
+    )
     if _debug: _log.debug("    - this_device: %r", this_device)
 
     # make a simple application
-    this_application = SubscribeCOVApplication(this_device, args.ini.address)
+    this_application = SubscribeCOVApplication(this_device, Address("192.168.149.129:47810"))
 
     # make a subscription context
-    context = SubscriptionContext(Address("10.0.1.31"), ('analogValue', 1), False, 60)
+    for i in range(2):
+        print("dap: making subscription: %i"%i)
+        lifetime = 10
+        context = SubscriptionContext(Address("192.168.149.129"), ('analogValue', i), False, lifetime)
 
-    # send the subscription when the stack is ready
-    deferred(this_application.send_subscription, context)
+        # send the subscription when the stack is ready
+        deferred(this_application.send_subscription, context)
+
 
     _log.debug("running")
 
