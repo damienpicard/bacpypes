@@ -28,7 +28,7 @@ from bacpypes.task import RecurringTask, _task_manager
 from bacpypes.basetypes import PropertyReference
 
 # some debugging
-_debug = 0
+_debug = 1
 _log = ModuleLogger(globals())
 
 # globals
@@ -113,16 +113,16 @@ class SubscribeCOVApplication(BIPSimpleApplication):
         if _debug: SubscribeCOVApplication._debug("send_subscription %r", context)
 
         # build a request
-        # request = SubscribeCOVRequest(
-        #     subscriberProcessIdentifier=context.subscriberProcessIdentifier,
-        #     monitoredObjectIdentifier=context.monitoredObjectIdentifier,
-        #     )
-        request = SubscribeCOVPropertyRequest(
-           subscriberProcessIdentifier=context.subscriberProcessIdentifier,
-           monitoredObjectIdentifier=context.monitoredObjectIdentifier,
-           monitoredPropertyIdentifier=PropertyReference(propertyIdentifier=85),
-           covIncrement=2
-        )
+        request = SubscribeCOVRequest(
+            subscriberProcessIdentifier=context.subscriberProcessIdentifier,
+            monitoredObjectIdentifier=context.monitoredObjectIdentifier,
+            )
+        # request = SubscribeCOVPropertyRequest(
+        #    subscriberProcessIdentifier=context.subscriberProcessIdentifier,
+        #    monitoredObjectIdentifier=context.monitoredObjectIdentifier,
+        #    monitoredPropertyIdentifier=PropertyReference(propertyIdentifier=85),
+        #    covIncrement=2.0
+        # )
         request.pduDestination = context.address
 
         # optional parameters
@@ -190,8 +190,8 @@ class SubscribeCOVApplication(BIPSimpleApplication):
         # now tell the context object
         context.cov_notification(apdu)
 
-    def do_SubscribeCOVRequest(self, apdu):
-        print("dap: do_SubscribeCOVRequest")
+    #def do_SubscribeCOVRequest(self, apdu):
+    #   print("dap: do_SubscribeCOVRequest")
 
 #do_UnconfirmedCOVNotificationRequest
 #   __main__
@@ -204,7 +204,7 @@ def main():
     #args = ConfigArgumentParser(description=__doc__).parse_args()
 
     if _debug: _log.debug("initialization")
-    if _debug: _log.debug("    - args: %r", args)
+    if _debug: _log.debug("    - args: %r", None)
 
     # make a device object
     this_device = LocalDeviceObject(
@@ -220,7 +220,7 @@ def main():
     this_application = SubscribeCOVApplication(this_device, Address("192.168.149.130:47810"))
 
     # make a subscription context
-    for i in range(0):
+    for i in range(1):
         print("dap: making subscription: %i"%i)
         lifetime = 2
         context = SubscriptionContext(Address("192.168.149.130"),
