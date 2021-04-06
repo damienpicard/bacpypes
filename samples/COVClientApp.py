@@ -25,7 +25,7 @@ from bacpypes.app import BIPSimpleApplication
 from bacpypes.local.device import LocalDeviceObject
 
 from bacpypes.task import RecurringTask, _task_manager
-from bacpypes.services.basetypes import PropertyReference
+from bacpypes.basetypes import PropertyReference
 
 # some debugging
 _debug = 0
@@ -113,12 +113,16 @@ class SubscribeCOVApplication(BIPSimpleApplication):
         if _debug: SubscribeCOVApplication._debug("send_subscription %r", context)
 
         # build a request
+        # request = SubscribeCOVRequest(
+        #     subscriberProcessIdentifier=context.subscriberProcessIdentifier,
+        #     monitoredObjectIdentifier=context.monitoredObjectIdentifier,
+        #     )
         request = SubscribeCOVPropertyRequest(
-            subscriberProcessIdentifier=context.subscriberProcessIdentifier,
-            monitoredObjectIdentifier=context.monitoredObjectIdentifier,
-            monitoredPropertyIdentifier=PropertyReference(propertyIdentifier=85, propertyArrayIndex=16),
-            covIncrement=2
-            )
+           subscriberProcessIdentifier=context.subscriberProcessIdentifier,
+           monitoredObjectIdentifier=context.monitoredObjectIdentifier,
+           monitoredPropertyIdentifier=PropertyReference(propertyIdentifier=85),
+           covIncrement=2
+        )
         request.pduDestination = context.address
 
         # optional parameters
@@ -216,7 +220,7 @@ def main():
     this_application = SubscribeCOVApplication(this_device, Address("192.168.149.130:47810"))
 
     # make a subscription context
-    for i in range(2):
+    for i in range(0):
         print("dap: making subscription: %i"%i)
         lifetime = 2
         context = SubscriptionContext(Address("192.168.149.130"),

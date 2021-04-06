@@ -105,6 +105,7 @@ class Subscription(OneShotTask, DebugContents):
         self.obj_id = obj_id
         self.confirmed = confirmed
         self.lifetime = lifetime
+        self.covIncrement = cov_inc
 
         print("dap: lifetime is: "%self.lifetime)
 
@@ -695,6 +696,9 @@ class ChangeOfValueServices(Capability):
         confirmed = apdu.issueConfirmedNotifications
         lifetime = apdu.lifetime
 
+        print("Dap: do_SubscribeCOVRequest: prop_id: {}, cov_inc: {}".format(prop_id,cov_inc))
+
+
         # request is to cancel the subscription
         cancel_subscription = (confirmed is None) and (lifetime is None)
 
@@ -762,10 +766,6 @@ class ChangeOfValueServices(Capability):
             if _debug: ChangeOfValueServices._debug("    - send a notification")
             deferred(cov_detection.send_cov_notifications, cov)
 
-
-
-
-
     def do_SubscribeCOVPropertyRequest(self, apdu):
         if _debug: ChangeOfValueServices._debug("do_SubscribeCOVPropertyRequest %r", apdu)
 
@@ -778,6 +778,7 @@ class ChangeOfValueServices(Capability):
         prop_id = apdu.monitoredPropertyIdentifier
         cov_inc = apdu.covIncrement
 
+        print("Dap: prop_id: {}, cov_inc: {}".format(prop_id,cov_inc))
         # request is to cancel the subscription
         cancel_subscription = (confirmed is None) and (lifetime is None)
 
