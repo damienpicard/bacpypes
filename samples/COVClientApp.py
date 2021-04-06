@@ -24,7 +24,7 @@ from bacpypes.errors import ExecutionError
 from bacpypes.app import BIPSimpleApplication
 from bacpypes.local.device import LocalDeviceObject
 
-from bacpypes.task import OneShotTask
+from bacpypes.task import RecurringTask, _task_manager
 
 # some debugging
 _debug = 0
@@ -36,23 +36,31 @@ this_application = None
 subscription_contexts = {}
 next_proc_id = 1
 
+count = 0
+
 #
 #   SubscriptionContext
 #
 
-class RenewSubscription(OneShotTask):
-    def __init__(self, subscribeCOVApplication, context):
+class RenewSubscription(RecurringTask):
+    global _task_manager
+    def __init__(self, interval, offset, subscribeCOVApplication, context):
         self.subscribeCOVApplication = subscribeCOVApplication
         self.context = context
-        OneShotTask.__init__(self, when=None)
+        RecurringTask.__init__(self, interval=interval*1000, offset=offset)
+        self.install_task()
 
     def process_task(self):
+        global count
         print("dap: subscription has arrived at end of lifetime: %s"%datetime.now())
-        print("Making a new subscription")
+        print("Making a new subscription: %i" % count)
 
-        self.subscribeCOVApplication.close_socket()
-        stop()
-        #self.subscribeCOVApplication.send_subscription(self.context)
+        if count > 2:
+            self.subscribeCOVApplication.close_socket()
+            stop()
+        else:
+            count += 1
+            self.subscribeCOVApplication.send_subscription(self.context)
 
 
 @bacpypes_debugging
@@ -138,8 +146,7 @@ class SubscribeCOVApplication(BIPSimpleApplication):
         if iocb.ioError:
             if _debug: SubscribeCOVApplication._debug("    - error: %r", iocb.ioError)
 
-        rs = RenewSubscription(self, context)
-        rs.install_task(delta=iocb.args[0].lifetime)
+        rs = RenewSubscription(iocb.args[0].lifetime, None, self, context)
 
     def do_ConfirmedCOVNotificationRequest(self, apdu):
         if _debug: SubscribeCOVApplication._debug("do_ConfirmedCOVNotificationRequest %r", apdu)
@@ -175,6 +182,9 @@ class SubscribeCOVApplication(BIPSimpleApplication):
         # now tell the context object
         context.cov_notification(apdu)
 
+    def do_SubscribeCOVRequest(self, apdu):
+        print("dap: do_SubscribeCOVRequest")
+
 #do_UnconfirmedCOVNotificationRequest
 #   __main__
 #
@@ -199,13 +209,13 @@ def main():
     if _debug: _log.debug("    - this_device: %r", this_device)
 
     # make a simple application
-    this_application = SubscribeCOVApplication(this_device, Address("192.168.149.129:47810"))
+    this_application = SubscribeCOVApplication(this_device, Address("192.168.149.130:47810"))
 
     # make a subscription context
     for i in range(2):
         print("dap: making subscription: %i"%i)
-        lifetime = 10
-        context = SubscriptionContext(Address("192.168.149.129"), ('analogValue', i), False, lifetime)
+        lifetime = 2
+        context = SubscriptionContext(Address("192.168.149.130"), ('analogValue', i), False, lifetime)
 
         # send the subscription when the stack is ready
         deferred(this_application.send_subscription, context)
