@@ -18,13 +18,14 @@ from bacpypes.core import run, deferred, stop
 from bacpypes.iocb import IOCB
 
 from bacpypes.pdu import Address
-from bacpypes.apdu import SubscribeCOVRequest, SimpleAckPDU
+from bacpypes.apdu import SubscribeCOVRequest, SimpleAckPDU, SubscribeCOVPropertyRequest
 from bacpypes.errors import ExecutionError
 
 from bacpypes.app import BIPSimpleApplication
 from bacpypes.local.device import LocalDeviceObject
 
 from bacpypes.task import RecurringTask, _task_manager
+from bacpypes.services.basetypes import PropertyReference
 
 # some debugging
 _debug = 0
@@ -66,7 +67,7 @@ class RenewSubscription(RecurringTask):
 @bacpypes_debugging
 class SubscriptionContext:
 
-    def __init__(self, address, objid, confirmed=None, lifetime=None):
+    def __init__(self, address, objid, confirmed=None, lifetime=None, covIncrement=None):
         if _debug: SubscriptionContext._debug("__init__ %r %r confirmed=%r lifetime=%r", address, objid, confirmed, lifetime)
         global subscription_contexts, next_proc_id
 
@@ -81,6 +82,7 @@ class SubscriptionContext:
         self.monitoredObjectIdentifier = objid
         self.issueConfirmedNotifications = confirmed
         self.lifetime = lifetime
+        self.covIncrement = covIncrement
 
     def cov_notification(self, apdu):
         if _debug: SubscriptionContext._debug("cov_notification %r", apdu)
@@ -111,9 +113,11 @@ class SubscribeCOVApplication(BIPSimpleApplication):
         if _debug: SubscribeCOVApplication._debug("send_subscription %r", context)
 
         # build a request
-        request = SubscribeCOVRequest(
+        request = SubscribeCOVPropertyRequest(
             subscriberProcessIdentifier=context.subscriberProcessIdentifier,
             monitoredObjectIdentifier=context.monitoredObjectIdentifier,
+            monitoredPropertyIdentifier=PropertyReference(propertyIdentifier=85, propertyArrayIndex=16),
+            covIncrement=2
             )
         request.pduDestination = context.address
 
@@ -215,7 +219,11 @@ def main():
     for i in range(2):
         print("dap: making subscription: %i"%i)
         lifetime = 2
-        context = SubscriptionContext(Address("192.168.149.130"), ('analogValue', i), False, lifetime)
+        context = SubscriptionContext(Address("192.168.149.130"),
+                                      ('analogValue', i),
+                                      False,
+                                      lifetime,
+                                      covIncrement=2)
 
         # send the subscription when the stack is ready
         deferred(this_application.send_subscription, context)
